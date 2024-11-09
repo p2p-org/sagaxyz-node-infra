@@ -111,10 +111,6 @@ spec:
             value: "%%% stake_owner_address %%%"
           - name: KEYPASSWD
             value: "%%% keychain_password %%%"
-{% if versions.controller is version('0.10.0', '>=') %}
-          - name: VALIDATOR_ADDRESSES_COSMOS
-            value: "{{ .ChainletValidators }}"
-{% endif %}
 {% if voting_period is defined %}
           - name: VOTING_PERIOD
             value: "%%% voting_period %%%"
