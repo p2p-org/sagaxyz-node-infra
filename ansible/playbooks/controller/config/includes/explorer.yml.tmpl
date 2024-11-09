@@ -417,7 +417,7 @@ spec:
         kubernetes.io/os: linux
       restartPolicy: Always
       containers:
-        - image: ghcr.io/blockscout/stats:v1.5.0
+        - image: sagaxyz/blockscout-stats:v1.5.0
           resources:
             requests:
               cpu: 10m
@@ -483,7 +483,7 @@ spec:
       restartPolicy: Always
       containers:
         - name: blockscout-frontend
-          image: "ghcr.io/blockscout/frontend:v1.17.0"
+          image: "sagaxyz/blockscout-frontend:v1.17.0"
           resources:
             requests:
               cpu: 100m
