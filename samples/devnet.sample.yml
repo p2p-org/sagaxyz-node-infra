@@ -33,7 +33,8 @@ eks_clusters:
     eks_nodegroup_name: "{{ inventory_hostname }}-nodegroup"
     eks_vpc_name: "devnet-vpc"
     eks_nodegroup_cluster_size: 1
-    eks_nodegroup_instance_type: m5a.4xlarge
+    eks_nodegroup_instance_type: m6g.xlarge
+    eks_nodegroup_ami_type: AL2_ARM_64
     max_pods_per_node: 100
 
     # Services
