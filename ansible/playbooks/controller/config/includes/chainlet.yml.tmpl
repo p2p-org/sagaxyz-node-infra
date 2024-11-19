@@ -160,12 +160,21 @@ spec:
             - containerPort: 8546
             - containerPort: 26660
           resources:
+{% if chainlet_resources is defined %}
+            requests:
+              memory: "%%% chainlet_resources.requests_memory %%%"
+              cpu: "%%% chainlet_resources.requests_cpu %%%"
+            limits:
+              memory: "%%% chainlet_resources.limits_memory %%%"
+              cpu: "%%% chainlet_resources.limits_cpu %%%"
+{% else %}
             requests:
               memory: "1Gi"
               cpu: "0.5"
             limits:
               memory: "4Gi"
               cpu: "2"
+{% endif %}
           volumeMounts:
             - name: "saga-{{ .Name }}-persistent-storage"
               mountPath: "/root/.sagaosd"
