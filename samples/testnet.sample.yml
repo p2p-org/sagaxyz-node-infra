@@ -29,12 +29,12 @@ eks_clusters:
     # === Editable Variables ===
     # Versions
     versions:
-      infrastructure: v1.0.0
-      spc: "0.2.3-rc"
-      controller: "0.9.1"
+      infrastructure: "release/mainnet"
+      spc: "0.3.0-beta"
+      controller: "0.10.0-alpha.2"
 
     # EKS
-    eks_kubernetes_version: "1.28"
+    eks_kubernetes_version: "1.31"
     eks_cluster_name: "{{ inventory_hostname }}"
     autoscale_enabled: true
     k8s_kubeconfig: "~/.kube/{{ inventory_hostname }}"
