@@ -64,6 +64,19 @@ spec:
       containers:
       - name: blockscout-sc-verifier
         image: sagaxyz/smart-contract-verifier:v1.9.2
+        env:
+        - name: SMART_CONTRACT_VERIFIER__SERVER__HTTP__MAX_BODY_SIZE
+          value: "10000000"
+        - name: SOURCIFY_INTEGRATION_ENABLED
+          value: "true"
+        - name: SOURCIFY_SERVER_URL
+          value: "https://sourcify.dev/server"
+        - name: SOURCIFY_REPO_URL
+          value: "https://repo.sourcify.dev/select-contract/"
+{% if eks_nodegroup_ami_type == "AL2_ARM_64" %}
+        - name: SMART_CONTRACT_VERIFIER__SOLIDITY__FETCHER__LIST__LIST_URL
+          value: "https://raw.githubusercontent.com/blockscout/solc-bin/refs/heads/main/solc.aarch64.list.json"
+{% endif %}
         resources:
           requests:
             memory: 500Mi

@@ -264,6 +264,7 @@ metadata:
   namespace: "{{ .Namespace }}"
   annotations:
     nginx.org/websocket-services: blockscout-backend
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
 spec:
   ingressClassName: nginx
   rules:
