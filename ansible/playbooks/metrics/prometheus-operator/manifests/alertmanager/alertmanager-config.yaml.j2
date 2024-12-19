@@ -1,0 +1,62 @@
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: AlertmanagerConfig
+metadata:
+  name: alertmanager-config
+  namespace: sagasrv-metrics
+spec:
+  route:
+    receiver: 'all'
+    continue: false
+    routes:
+      - receiver: watchdog
+        continue: true
+        repeatInterval: 20s
+        matchers:
+          - name: alertname
+            value: Watchdog
+            matchType: =~
+      - receiver: empty
+        continue: false
+        matchers:
+          - name: alertname
+            value: KubeControllerManagerDown|KubeSchedulerDown|InfoInhibitor
+            matchType: =~
+      - receiver: empty
+        continue: false
+        matchers:
+          - name: severity
+            value: info|none
+            matchType: =~
+      - receiver: all
+        continue: false
+        matchers:
+          - name: severity
+            value: warning|critical
+            matchType: =~
+  receivers:
+    - name: 'empty'
+{% if alertmanager.opsgenie_config is defined %}
+    - name: 'watchdog'
+      webhookConfigs:
+        - url: "{{ alertmanager.opsgenie_api_url }}/v2/heartbeats/{{ alertmanager.opsgenie_heartbeat_name }}/ping"
+          httpConfig:
+            basicAuth:
+              username:
+                name: alertmanager-config
+                key: opsgenie-api-username
+              password:
+                key: opsgenie-api-key
+                name: alertmanager-config
+          sendResolved: true
+{% endif %}
+    - name: 'all'
+      slackConfigs:
+        - apiURL:
+            key: slack-api-url
+            name: alertmanager-config
+          sendResolved: true
+          text: "{% raw %}*[{{ .Status }}] {{ .CommonLabels.alertname }} ({{ .CommonLabels.severity }}):*{{ range .Alerts }}\n- {{ .Annotations.description }}{{ end }}{% endraw %}"
+{% if alertmanager.opsgenie_config is defined %}
+      opsgenieConfigs:
+{{ alertmanager.opsgenie_config | to_nice_yaml | indent(8, first=true) }}
+{% endif %}

@@ -1,36 +1,33 @@
-
 - hosts: eks_clusters
   gather_facts: false
   vars:
-    - metrics_deployment_enabled: "{{ metrics_enabled | default(true) }}"
-    - deploy_alerting: "{{ chains_monitor_enabled and deployment_enabled and metrics_deployment_enabled }}"
-    - alertmanager_enabled: "{{ alertmanager is defined }}"
-    - alertmanager_dir:  "{{ prometheus_operator_dir }}/alertmanager"
-    - prometheus_operator_dir: "~/.ansible/deployments/{{ eks_cluster_name }}/prometheus-operator"
-    - dashboards_dir: "{{ prometheus_operator_dir }}/dashboards"
-    - alerts_dir: "{{ prometheus_operator_dir }}/alerts"
-    - chainlets_dir: "~/.ansible/deployments/{{ eks_cluster_name }}/chainlets"
-    - public_controller: "{{ rpc_enabled }}"
+    deployment_enabled: "{{ metrics_enabled | default(true) }}"
+    metrics_deployment_enabled: "{{ metrics_enabled | default(true) }}"
+    deploy_alerting: "{{ chains_monitor_enabled and deployment_enabled and metrics_deployment_enabled }}"
+    alertmanager_enabled: "{{ alertmanager is defined }}"
+    alertmanager_dir:  "{{ prometheus_operator_dir }}/alertmanager"
+    prometheus_operator_dir: "~/.ansible/deployments/{{ eks_cluster_name }}/prometheus-operator"
+    dashboards_dir: "{{ prometheus_operator_dir }}/dashboards"
+    alerts_dir: "{{ prometheus_operator_dir }}/alerts"
+    chainlets_dir: "~/.ansible/deployments/{{ eks_cluster_name }}/chainlets"
+    public_controller: "{{ rpc_enabled }}"
   tasks:
     - name: Apply SPC Namespace spec
       kubernetes.core.k8s:
         kubeconfig: "{{ k8s_kubeconfig }}"
         state: present
         src: ~/.ansible/deployments/{{ eks_cluster_name }}/spc-ns.yml
-
     - name: Apply Controller Namespace spec
       kubernetes.core.k8s:
         kubeconfig: "{{ k8s_kubeconfig }}"
         state: present
         src: ~/.ansible/deployments/{{ eks_cluster_name }}/controller-ns.yml
-
     - name: Apply metrics namespace spec
       kubernetes.core.k8s:
         kubeconfig: "{{ k8s_kubeconfig }}"
         state: present
         src: "{{ prometheus_operator_dir }}/setup/0namespace-namespace.yaml"
       when: metrics_deployment_enabled
-
     - name: Apply Controller configmap spec
       kubernetes.core.k8s:
         kubeconfig: "{{ k8s_kubeconfig }}"
@@ -38,13 +35,11 @@
         definition: "{{ lookup('kubernetes.core.kustomize', dir='' + chainlets_dir_abs ) }}"
       vars:
         chainlets_dir_abs: "{{ chainlets_dir | expanduser }}"
-
     - name: Apply SPC Service spec
       kubernetes.core.k8s:
         kubeconfig: "{{ k8s_kubeconfig }}"
         state: present
         src: ~/.ansible/deployments/{{ eks_cluster_name }}/spc-service.yml
-
     - name: Get elb info spc
       kubernetes.core.k8s_info:
         kubeconfig: "{{ k8s_kubeconfig }}"
@@ -56,12 +51,10 @@
       until: (elb_info['resources'][0]['status']['loadBalancer']['ingress'][0]['hostname'] | default('')) != ''
       retries: 12
       delay: 5
-
     - name: Set the load balancer URL as a fact.
       set_fact:
         spc_lb_host: "{{ (elb_info['resources'][0]['status']['loadBalancer']['ingress'][0]['hostname'] | default('')) }}"
       when: aws_environment | bool
-
     - name: Add an CNAME record in Route53 for spc (if configured).
       route53:
         profile: "{{ aws_profile }}"
@@ -80,13 +73,11 @@
         - spc_external_address_host is defined
         - spc_external_address_host != ''
         - spc_lb_host != ''
-
     - name: Apply Controller Service spec
       kubernetes.core.k8s:
         state: present
         kubeconfig: "{{ k8s_kubeconfig }}"
         src: ~/.ansible/deployments/{{ eks_cluster_name }}/controller-service.yml
-
     - name: Get controller service elb info spc
       kubernetes.core.k8s_info:
         kubeconfig: "{{ k8s_kubeconfig }}"
@@ -99,14 +90,12 @@
       retries: 12
       delay: 5
       when: public_controller | bool
-
     - name: Set the controller load balancer URL as a fact.
       set_fact:
         controller_lb_host: "{{ (controller_elb_info['resources'][0]['status']['loadBalancer']['ingress'][0]['hostname'] | default('')) }}"
       when:
         - aws_environment | bool
         - public_controller | bool
-
     - name: Add an CNAME record in Route53 for controller (if configured).
       route53:
         profile: "{{ aws_profile }}"
@@ -124,59 +113,51 @@
         - route53_zone != ''
         - controller_external_address_host != ''
         - controller_lb_host != ''
-
     - name: Apply SPC Deployment spec
       kubernetes.core.k8s:
         kubeconfig: "{{ k8s_kubeconfig }}"
         state: present
         src: ~/.ansible/deployments/{{ eks_cluster_name }}/spc-deployment.yml
-
     - name: Apply SPC Cosmos Exporter Deployment spec
       kubernetes.core.k8s:
         kubeconfig: "{{ k8s_kubeconfig }}"
         state: present
         src: ~/.ansible/deployments/{{ eks_cluster_name }}/spc-cosmos-exporter-deployment.yml
       when: chains_monitor_enabled
-
     - name: Apply SPC snapshot cronjob spec
       kubernetes.core.k8s:
         kubeconfig: "{{ k8s_kubeconfig }}"
         state: present
         src: ~/.ansible/deployments/{{ eks_cluster_name }}/spc-snapshot-cronjob.yml
       when: snapshot.spc is defined
-
     - name: Apply SSC snapshot cronjob spec
       kubernetes.core.k8s:
         kubeconfig: "{{ k8s_kubeconfig }}"
         state: present
         src: ~/.ansible/deployments/{{ eks_cluster_name }}/ssc-snapshot-cronjob.yml
       when: snapshot.ssc is defined
-
     - name: Apply Controller Deployment spec
       kubernetes.core.k8s:
         kubeconfig: "{{ k8s_kubeconfig }}"
         state: present
         src: ~/.ansible/deployments/{{ eks_cluster_name }}/controller-deployment.yml
-
     - name: Apply fluentd Deployment spec
       kubernetes.core.k8s:
         kubeconfig: "{{ k8s_kubeconfig }}"
         state: present
         src: ~/.ansible/deployments/{{ eks_cluster_name }}/fluentd-deployment.yml
       when: elasticsearch_info is defined
-
     - name: Apply Ingress controller pre spec
       kubernetes.core.k8s:
         kubeconfig: "{{ k8s_kubeconfig }}"
         state: present
         src: ~/.ansible/deployments/{{ eks_cluster_name }}/ingress-controller-pre.yml
-    
+
     - name: Apply Ingress controller service spec
       kubernetes.core.k8s:
         kubeconfig: "{{ k8s_kubeconfig }}"
         state: present
         src: ~/.ansible/deployments/{{ eks_cluster_name }}/ingress-controller.yml
-
     - name: Wait for ingress-nginx-admission-create job completion
       kubernetes.core.k8s_info:
         kubeconfig: "{{ k8s_kubeconfig }}"
@@ -188,7 +169,6 @@
         wait_condition:
           type: Complete
           status: "True"
-
     - name: Wait for ingress-nginx-admission-patch job completion
       kubernetes.core.k8s_info:
         kubeconfig: "{{ k8s_kubeconfig }}"
@@ -200,7 +180,6 @@
         wait_condition:
           type: Complete
           status: "True"
-
     - name: Wait for ingress-nginx-controller deployment availability
       kubernetes.core.k8s_info:
         kubeconfig: "{{ k8s_kubeconfig }}"
@@ -212,7 +191,6 @@
         wait_condition:
           type: Available
           status: "True"
-
     - name: Apply prometheus operator setup spec
       kubernetes.core.k8s:
         kubeconfig: "{{ k8s_kubeconfig }}"
@@ -221,7 +199,6 @@
       with_fileglob:
         - "{{ prometheus_operator_dir }}/setup/*.yaml"
       when: metrics_deployment_enabled
-
     - name: Deploy dashboards as configmap
       kubernetes.core.k8s:
         kubeconfig: "{{ k8s_kubeconfig }}"
@@ -230,7 +207,6 @@
       vars:
         dashboards_dir_abs: "{{ dashboards_dir | expanduser }}"
       when: metrics_deployment_enabled
-
     - name: Apply prometheus operator spec
       kubernetes.core.k8s:
         kubeconfig: "{{ k8s_kubeconfig }}"
@@ -239,7 +215,6 @@
       with_fileglob:
         - "{{ prometheus_operator_dir }}/*.yaml"
       when: metrics_deployment_enabled
-
     - name: Deploy alertmanager secret
       kubernetes.core.k8s:
         kubeconfig: "{{ k8s_kubeconfig }}"
@@ -254,14 +229,27 @@
           stringData:
             slack-api-url: "{{ alertmanager.cluster_alerts_slack_url }}"
       when: alertmanager_enabled
-
+    - name: Deploy opsgenie secret
+      kubernetes.core.k8s:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Secret
+          type: Opaque
+          metadata:
+            name: alertmanager-config
+            namespace: sagasrv-metrics
+          stringData:
+            opsgenie-api-key: "{{ alertmanager.opsgenie_api_key }}"
+            opsgenie-api-username: ""
+      when: alertmanager.opsgenie_api_key is defined
     - name: Deploy alertmanager config
       kubernetes.core.k8s:
         kubeconfig: "{{ k8s_kubeconfig }}"
         state: present
         definition: "{{ lookup('file', '{{ alertmanager_dir }}/alertmanager-config.yaml') | from_yaml }}"
       when: alertmanager_enabled
-
     - name: Deploy custom prometheus rules
       kubernetes.core.k8s:
         kubeconfig: "{{ k8s_kubeconfig }}"
@@ -270,7 +258,6 @@
       with_fileglob:
         - "{{ alertmanager_dir }}/rules/*.yaml"
       when: alertmanager_enabled
-
     - name: Get ingress nlb info
       kubernetes.core.k8s_info:
         kubeconfig: "{{ k8s_kubeconfig }}"
@@ -282,12 +269,10 @@
       until: (nlb_info['resources'][0]['status']['loadBalancer']['ingress'][0]['hostname'] | default('')) != ''
       retries: 12
       delay: 5
-
     - name: Set the ingress network load balancer URL as a fact.
       set_fact:
         nlb_host: "{{ (nlb_info['resources'][0]['status']['loadBalancer']['ingress'][0]['hostname'] | default('')) }}"
       when: aws_environment | bool
-
     - name: Add an CNAME record in Route53 (if configured).
       route53:
         profile: "{{ aws_profile }}"
@@ -306,7 +291,6 @@
         - ingress_external_address_host is defined
         - ingress_external_address_host != ''
         - nlb_host != ''
-
     - name: Add an CNAME record in explorer Route53 (if configured).
       route53:
         profile: "{{ aws_profile }}"
@@ -325,7 +309,6 @@
         - explorer_ingress_external_address_host != ''
         - nlb_host != ''
         - explorer_sagaevm or metrics_deployment_enabled | bool
-
     - name: Apply Ingress controller healthz endpoints
       kubernetes.core.k8s:
         kubeconfig: "{{ k8s_kubeconfig }}"
