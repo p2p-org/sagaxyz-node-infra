@@ -7,10 +7,16 @@ spec:
   route:
     receiver: 'all'
     continue: false
+    groupBy: ["alertname", "severity"]
+    groupWait: 10s
+    groupInterval: 10s
+    repeatInterval: 4h
     routes:
       - receiver: watchdog
         continue: true
-        repeatInterval: 5s
+        repeatInterval: 20s
+        groupWait: 0s
+        groupInterval: 20s
         matchers:
           - name: alertname
             value: Watchdog
