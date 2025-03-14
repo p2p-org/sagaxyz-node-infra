@@ -106,26 +106,38 @@
         state: directory
         mode: '0744'
 
-    - name: Generate spec for Karpenter Provisioner
+    - name: Generate spec for Karpenter Nodepool
       ansible.builtin.template:
-        src: karpenter-provisioner.yaml.j2
-        dest: ~/.ansible/deployments/{{ eks_cluster_name }}/karpenter-provisioner.yaml
+        src: karpenter-nodepool.yaml.j2
+        dest: ~/.ansible/deployments/{{ eks_cluster_name }}/karpenter-nodepool.yaml
         mode: '0644'
 
-    - name: Create karpenter provisioners
-      kubernetes.core.k8s:
-        kubeconfig: "{{ k8s_kubeconfig }}"
-        state: present
-        src: karpenter.sh_provisioners.yaml
-
-    - name: Create Karpenter aws node templates
-      kubernetes.core.k8s:
-        kubeconfig: "{{ k8s_kubeconfig }}"
-        state: present
-        src: karpenter.k8s.aws_awsnodetemplates.yaml
+    - name: Generate Karpenter CRDs spec using Helm
+      shell: >
+        helm template karpenter-crd oci://public.ecr.aws/karpenter/karpenter-crd --version 1.0.7 --namespace karpenter --create-namespace  > ~/.ansible/deployments/{{ eks_cluster_name }}/karpenter-crd.yaml
 
     - name: Generate Karpenter spec using Helm
-      shell: helm template karpenter oci://public.ecr.aws/karpenter/karpenter --version v0.27.1 --namespace karpenter --create-namespace --set settings.aws.defaultInstanceProfile={{ karpenter_instance_profile }} --set settings.aws.clusterName={{ eks_cluster_name }} --set serviceAccount.annotations."eks\.amazonaws\.com/role-arn"="arn:aws:iam::{{ account_id }}:role/KarpenterControllerRole-{{ eks_cluster_name }}" --set controller.resources.requests.cpu=1 --set controller.resources.requests.memory=1Gi --set controller.resources.limits.cpu=1 --set controller.resources.limits.memory=1Gi --set affinity.nodeAffinity=null --set affinity.podAntiAffinity=null > ~/.ansible/deployments/{{ eks_cluster_name }}/karpenter.yaml
+      shell: >
+        helm template karpenter oci://public.ecr.aws/karpenter/karpenter
+        --version 1.0.7
+        --namespace karpenter
+        --create-namespace
+        --set settings.aws.defaultInstanceProfile={{ karpenter_instance_profile }}
+        --set serviceAccount.annotations."eks\.amazonaws\.com/role-arn"="arn:aws:iam::{{ account_id }}:role/KarpenterControllerRole-{{ eks_cluster_name }}"
+        --set controller.resources.requests.cpu=1
+        --set controller.resources.requests.memory=1Gi
+        --set controller.resources.limits.cpu=1
+        --set controller.resources.limits.memory=1Gi
+        --set affinity.nodeAffinity=null
+        --set affinity.podAntiAffinity=null
+        --set settings.clusterName={{ eks_cluster_name }} > ~/.ansible/deployments/{{ eks_cluster_name }}/karpenter.yaml
+
+    - name: Deploy karpenter CRDs
+      kubernetes.core.k8s:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        state: present
+        src: ~/.ansible/deployments/{{ eks_cluster_name }}/karpenter-crd.yaml
+        wait: true
 
     - name: Deploy karpenter
       kubernetes.core.k8s:
@@ -134,9 +146,25 @@
         src: ~/.ansible/deployments/{{ eks_cluster_name }}/karpenter.yaml
         wait: true
 
-    - name: Apply karpenter provisioner
+    - name: Apply karpenter nodepool
       kubernetes.core.k8s:
         kubeconfig: "{{ k8s_kubeconfig }}"
         state: present
-        src: ~/.ansible/deployments/{{ eks_cluster_name }}/karpenter-provisioner.yaml
+        src: ~/.ansible/deployments/{{ eks_cluster_name }}/karpenter-nodepool.yaml
         wait: true
+
+    - name: Get all nodes info
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        kind: Node
+      register: all_nodes
+
+    - name: Delete nodes with incorrect instance type
+      kubernetes.core.k8s:
+        kubeconfig: "{{ k8s_kubeconfig }}"
+        state: absent
+        kind: Node
+        name: "{{ item.metadata.name }}"
+      no_log: true
+      with_items: "{{ all_nodes.resources | list }}"
+      when: item.metadata.labels['node.kubernetes.io/instance-type'] != eks_nodegroup_instance_type

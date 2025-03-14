@@ -22,7 +22,7 @@ data:
   IPC_PATH: ""
   NETWORK_PATH: /
   BLOCKSCOUT_PROTOCOL: ""
-  BLOCKSCOUT_VERSION: "{{ .ExplorerVersion }}"
+  BLOCKSCOUT_VERSION: "7.0.1"
   PORT: "4000"
   COIN_NAME: {{ .CoinDenom }}
   EMISSION_FORMAT: DEFAULT
@@ -90,7 +90,11 @@ data:
   MAX_STRING_LENGTH_WITHOUT_TRIMMING: "2040"
   RE_CAPTCHA_SECRET_KEY: ""
   RE_CAPTCHA_CLIENT_KEY: ""
+{{ if $isDex }}
+  JSON_RPC: "https://{{ .ChainletName }}.jsonrpc.%%% rpc_url_suffixes[0] %%%"
+{{ else }}
   JSON_RPC: "https://{{ .ChainletName }}-{{ .ChainIdNumber }}-1.jsonrpc.%%% rpc_url_suffixes[0] %%%"
+{{ end }}
   API_RATE_LIMIT: "50"
   API_RATE_LIMIT_BY_KEY: "50"
   API_RATE_LIMIT_BY_WHITELISTED_IP: "50"
@@ -98,7 +102,8 @@ data:
   API_RATE_LIMIT_STATIC_API_KEY: ""
   FETCH_REWARDS_WAY: trace_block
   MICROSERVICE_SC_VERIFIER_ENABLED: "true"
-  MICROSERVICE_SC_VERIFIER_URL: "http://blockscout-sc-verifier.blockscout.svc.cluster.local:8050"
+  MICROSERVICE_SC_VERIFIER_URL: "https://eth-bytecode-db.services.blockscout.com/"
+  MICROSERVICE_SC_VERIFIER_TYPE: "eth_bytecode_db"
   MICROSERVICE_VISUALIZE_SOL2UML_ENABLED: "false"
   MICROSERVICE_VISUALIZE_SOL2UML_URL: ""
   MICROSERVICE_SIG_PROVIDER_ENABLED: "false"
@@ -115,14 +120,19 @@ metadata:
   name: blockscout-frontend-configmap
   namespace: "{{ .Namespace }}"
 data:
+{{ if $isDex }}
+  NEXT_PUBLIC_APP_HOST: "{{ .ChainletName }}.%%% explorer_url_suffixes[0] %%%"
+  NEXT_PUBLIC_NETWORK_RPC_URL: "https://{{ .ChainletName }}.jsonrpc.%%% rpc_url_suffixes[0] %%%"
+{{ else }}
   NEXT_PUBLIC_APP_HOST: "{{ .ChainletName }}-{{ .ChainIdNumber }}-1.%%% explorer_url_suffixes[0] %%%"
+  NEXT_PUBLIC_NETWORK_RPC_URL: "https://{{ .ChainletName }}-{{ .ChainIdNumber }}-1.jsonrpc.%%% rpc_url_suffixes[0] %%%"
+{{ end }}
   NEXT_PUBLIC_APP_PORT: "443"
   NEXT_PUBLIC_AD_BANNER_PROVIDER: "none"
   NEXT_PUBLIC_AD_TEXT_PROVIDER: "none"
   NEXT_PUBLIC_NETWORK_NAME: "{{ .ChainletName }}"
   NEXT_PUBLIC_NETWORK_SHORT_NAME: "{{ .ChainletName }}"
   NEXT_PUBLIC_NETWORK_ID: "{{ .ChainIdNumber }}"
-  NEXT_PUBLIC_NETWORK_RPC_URL: "https://{{ .ChainletName }}-{{ .ChainIdNumber }}-1.jsonrpc.%%% rpc_url_suffixes[0] %%%"
   NEXT_PUBLIC_NETWORK_CURRENCY_NAME: "{{ .CoinDenom }}"
   NEXT_PUBLIC_NETWORK_CURRENCY_SYMBOL: "{{ .CoinDenom }}"
   NEXT_PUBLIC_NETWORK_VERIFICATION_TYPE: "validation"
@@ -264,6 +274,7 @@ metadata:
   namespace: "{{ .Namespace }}"
   annotations:
     nginx.org/websocket-services: blockscout-backend
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
 spec:
   ingressClassName: nginx
   rules:
@@ -308,7 +319,7 @@ spec:
       restartPolicy: Always
       containers:
         - name: blockscout-backend
-          image: "{{ .ExplorerImage }}"
+          image: blockscout/blockscout:7.0.1-api
           resources:
             requests:
               cpu: 100m
@@ -362,7 +373,7 @@ spec:
       restartPolicy: Always
       containers:
         - name: blockscout-indexer
-          image: "{{ .ExplorerImage }}"
+          image: blockscout/blockscout:7.0.1-indexer
           resources:
             requests:
               cpu: 500m
@@ -417,7 +428,7 @@ spec:
         kubernetes.io/os: linux
       restartPolicy: Always
       containers:
-        - image: ghcr.io/blockscout/stats:v1.5.0
+        - image: sagaxyz/blockscout-stats:v1.5.0
           resources:
             requests:
               cpu: 10m
@@ -483,7 +494,7 @@ spec:
       restartPolicy: Always
       containers:
         - name: blockscout-frontend
-          image: "ghcr.io/blockscout/frontend:v1.17.0"
+          image: "sagaxyz/blockscout-frontend:v1.37.6"
           resources:
             requests:
               cpu: 100m

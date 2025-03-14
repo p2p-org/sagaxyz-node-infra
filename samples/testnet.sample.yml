@@ -29,19 +29,20 @@ eks_clusters:
     # === Editable Variables ===
     # Versions
     versions:
-      infrastructure: v1.0.0
-      spc: "0.2.3-rc"
-      controller: "0.9.1"
+      infrastructure: "release/mainnet"
+      spc: "0.3.0-beta"
+      controller: "0.10.0-alpha.2"
 
     # EKS
-    eks_kubernetes_version: "1.28"
+    eks_kubernetes_version: "1.31"
     eks_cluster_name: "{{ inventory_hostname }}"
     autoscale_enabled: true
     k8s_kubeconfig: "~/.kube/{{ inventory_hostname }}"
     eks_nodegroup_name: "{{ inventory_hostname }}-nodegroup"
     eks_vpc_name: "testnet-vpc"
     eks_nodegroup_cluster_size: 1
-    eks_nodegroup_instance_type: m5a.4xlarge
+    eks_nodegroup_instance_type: m6g.xlarge
+    eks_nodegroup_ami_type: AL2_ARM_64
     max_pods_per_node: 100
 
     # Services
@@ -60,6 +61,15 @@ eks_clusters:
 
     # SPC
     spc_additional_args: ""
+
+    # latejoin
+    node_rpc_domain: testnet.sagarpc.io
+    stake_amount: 1500000
+    staking_fees: 100000
+    snapshot_trust_interval: 1000
+    sync_rpc_domains:
+      - st1.sagarpc.io
+      - stsrv1.sagarpc.io
 
   hosts:
     # === Validator Specific Variables ===

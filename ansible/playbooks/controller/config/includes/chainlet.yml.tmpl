@@ -48,7 +48,7 @@ spec:
     - ReadWriteOnce
   resources:
     requests:
-      storage: "100Gi"
+      storage: "%%% chain_volume_size %%%"
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -105,14 +105,12 @@ spec:
             value: "{{ .ChainletExternalAddress }}"
           - name: MAINTAINERS
             value: "{{ .ChainletMaintainers }}"
+          - name: VALIDATOR_ADDRESSES_COSMOS
+            value: "{{ .ChainletValidators }}"
           - name: STAKE_OWNER_ADDRESS
             value: "%%% stake_owner_address %%%"
           - name: KEYPASSWD
             value: "%%% keychain_password %%%"
-{% if versions.controller is version('0.10.0', '>=') %}
-          - name: VALIDATOR_ADDRESSES_COSMOS
-            value: "{{ .ChainletValidators }}"
-{% endif %}
 {% if voting_period is defined %}
           - name: VOTING_PERIOD
             value: "%%% voting_period %%%"
@@ -145,6 +143,16 @@ spec:
           - name: STAKING_FEES
             value: "%%% staking_fees %%%"
 {% endif %}
+{% if feepayer_private_key is defined %}
+{{ if $isDex }}
+          - name: FEE_PAYER_KEY
+            value: "%%% feepayer_private_key %%%"
+{% if dex_tracing_enabled %}
+          - name: OPTS
+            value: "--json-rpc.api eth,txpool,personal,net,debug,web3 --api.enabled-unsafe-cors --api.enable --grpc.address 0.0.0.0:9090 --json-rpc.address 0.0.0.0:8545 --json-rpc.enable true --json-rpc.api true --json-rpc.ws-address 0.0.0.0:8546 --evm.tracer=json"
+{% endif %}
+{{ end }}
+{% endif %}
 {{ range $key, $value := .ChainletEnvVars }}
           - name: {{ $key | ToUpper }}
             value: "{{ $value }}"
@@ -162,12 +170,21 @@ spec:
             - containerPort: 8546
             - containerPort: 26660
           resources:
+{% if chainlet_resources is defined %}
+            requests:
+              memory: "%%% chainlet_resources.requests_memory %%%"
+              cpu: "%%% chainlet_resources.requests_cpu %%%"
+            limits:
+              memory: "%%% chainlet_resources.limits_memory %%%"
+              cpu: "%%% chainlet_resources.limits_cpu %%%"
+{% else %}
             requests:
               memory: "1Gi"
               cpu: "0.5"
             limits:
               memory: "4Gi"
               cpu: "2"
+{% endif %}
           volumeMounts:
             - name: "saga-{{ .Name }}-persistent-storage"
               mountPath: "/root/.sagaosd"
@@ -175,35 +192,3 @@ spec:
             - name: "fluentd-logs"
               mountPath: "/var/log/saga"
               subPathExpr: $(UID)
-{% if relayer_enabled %}
-        - image: "{{ .RelayerImage }}"
-          resources:
-            requests:
-              memory: "1Gi"
-            limits:
-              memory: "2Gi"
-          imagePullPolicy: Always
-          name: relayer
-          command: ["bash"]
-          args:
-            - start-rly.sh
-          env:
-            - name: CHAINLET_RPC_ADDRESS
-              value: "http://localhost:26657"
-            - name: CHAINLET_CHAIN_ID
-              value: "{{ .ChainId }}"
-            - name: CHAINLET_DENOM
-              value: {{ .CoinDenom }}
-            - name: RELAYER_CHAINLET_MNEMONIC
-              value: {{ .RelayerChainletMnemonic }}
-            - name: SPC_CHAIN_ID
-              value: {{ .RelayerSpcChainId }}
-            - name: SPC_RPC_EXTERNAL_ADDRESS
-              value: {{ .RelayerSpcRpcAddress }}
-            - name: SPC_DENOM
-              value: {{ .RelayerSpcDenom }}
-            - name: RELAYER_SPC_MNEMONIC
-              value: {{ .RelayerSpcMnemonic }}
-          ports:
-            - containerPort: 5183
-{% endif %}

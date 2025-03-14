@@ -55,6 +55,29 @@
       set_fact:
         stack_outputs: "{{ stack_outputs | combine(eks_cluster_info['stack_outputs']) }}"
 
+    - name: Fetch the current instance type of the node group (if any)
+      command: >
+        aws eks describe-nodegroup
+        --profile {{ aws_profile }}
+        --region {{ aws_region }}
+        --cluster-name {{ eks_cluster_name }}
+        --nodegroup-name {{ eks_nodegroup_name }}
+        --query "nodegroup.instanceTypes[0]"
+        --output text
+      ignore_errors: yes
+      register: current_instance_type_output
+
+    - name: Delete outdated EKS Node Group via CloudFormation.
+      cloudformation:
+        stack_name: "{{ eks_cluster_name }}-nodegroup"
+        state: absent
+        region: "{{ aws_region }}"
+        profile: "{{ aws_profile }}"
+      when:
+        - not current_instance_type_output.failed
+        - current_instance_type_output.stdout != ""
+        - current_instance_type_output.stdout != eks_nodegroup_instance_type
+
     - name: Ensure EKS Node Group exists via CloudFormation.
       cloudformation:
         stack_name: "{{ eks_cluster_name }}-nodegroup"

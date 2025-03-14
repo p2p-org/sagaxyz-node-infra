@@ -10,6 +10,7 @@ eks_clusters:
     # SPC and chainlets
     chain_id: "spc-1"
     keyname: "{{ inventory_hostname }}-key"
+    quorum_count: 4
     validator_addresses: saga1pdf6slnws5hqeg0wz5t4snrfzyx7wg7fra84q3 saga1954vr9dlykxxtmazesz3llntmdz7pn0ep07x6v saga1dque6vr4lzlkl0uqn6v6tdxys5g466jphah7d4 saga18u6dnjzd2gzh5fgprtwvx9adfwwn99qc6tagnh
     dev_addresses_cosmos: ""
     dev_addresses_eth: ""
@@ -28,19 +29,20 @@ eks_clusters:
     # === Editable Variables ===
     # Versions
     versions:
-      infrastructure: "release/production"
+      infrastructure: "release/mainnet"
       spc: "0.3.0-beta"
-      controller: "0.10.0-alpha.1"
+      controller: "0.10.0-alpha.2"
 
     # EKS
-    eks_kubernetes_version: "1.28"
+    eks_kubernetes_version: "1.31"
     eks_cluster_name: "{{ inventory_hostname }}"
     autoscale_enabled: true
     k8s_kubeconfig: "~/.kube/{{ inventory_hostname }}"
     eks_nodegroup_name: "{{ inventory_hostname }}-nodegroup"
     eks_vpc_name: "mainnet-vpc"
     eks_nodegroup_cluster_size: 1
-    eks_nodegroup_instance_type: m5a.4xlarge
+    eks_nodegroup_instance_type: m6g.2xlarge
+    eks_nodegroup_ami_type: AL2_ARM_64
     max_pods_per_node: 100
 
     # DNS
@@ -67,8 +69,8 @@ eks_clusters:
 
     # latejoin
     node_rpc_domain: sagarpc.io
-    stake_amount: 1000
-    staking_fees: 10000
+    stake_amount: 1500000
+    staking_fees: 100000
     snapshot_trust_interval: 1000
     sync_rpc_domains:
       - spsrv1.sagarpc.io
