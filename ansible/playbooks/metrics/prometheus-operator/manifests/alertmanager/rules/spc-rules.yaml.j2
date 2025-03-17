@@ -9,23 +9,23 @@ spec:
     rules:
     - alert: SpcJailedValidator
       annotations:
-        description: SPC Jailed validator *{{ $labels.moniker }}*
+        description: SPC Jailed validator *{% raw %}{{ $labels.moniker }}{% endraw %}*
         summary: Jailed validator
-      expr: sum(cosmos_validators_jailed{app="spc-cosmos-exporter"}) by (moniker) > 0
+      expr: sum(cosmos_validators_jailed{app="spc-cosmos-exporter", moniker="{{ moniker }}"}) by (moniker) > 0
       labels:
         severity: critical
     - alert: SpcByzantineValidator
       annotations:
-        description: Byzantine validator(s) on SPC ({{ $value }})
+        description: Byzantine validator(s) on SPC ({% raw %}{{ $value }}{% endraw %})
         summary: SPC Byzantine validator
       expr: sum(cometbft_consensus_byzantine_validators{app="spc"}) > 0
       labels:
         severity: critical
     - alert: SpcMissedBlocks
       annotations:
-        description: "*{{ $labels.moniker }}* missed *{{ $value }}* blocks on *SPC* in 5m"
+        description: "*{% raw %}{{ $labels.moniker }}{% endraw %}* missed *{% raw %}{{ $value }}{% endraw %}* blocks on *SPC* in 5m"
         summary: SPC Missed more than 10 blocks in the last 5m
-      expr: delta(cosmos_validators_missed_blocks{app="spc-cosmos-exporter"}[5m]) > 10
+      expr: delta(cosmos_validators_missed_blocks{app="spc-cosmos-exporter", moniker="{{ moniker }}"}[5m]) > 10
       labels:
         severity: critical
     - alert: SpcNotProducingBlocks
@@ -37,7 +37,7 @@ spec:
         severity: critical
     - alert: SpcMempoolTooBig
       annotations:
-        description: Mempool for SPC is *{{ $value }}*
+        description: Mempool for SPC is *{% raw %}{{ $value }}{% endraw %}*
         summary: SPC Mempool bigger than 300
       expr: sum(cometbft_mempool_size{app="spc"}) > 300
       labels:

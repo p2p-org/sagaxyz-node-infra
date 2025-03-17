@@ -9,18 +9,32 @@
   tasks:
     - name: Create alerts directory if it does not exist
       ansible.builtin.file:
-        path: "{{ alerts_directory_dest }}"
+        path: "{{ alerts_directory_dest }}/rules"
         state: directory
         mode: '0744'
 
-    - name: Copy configuration file
-      copy:
-        src: "{{ alerts_directory_src }}/alertmanager-config.yaml"
-        dest: "{{ alerts_directory_dest }}"
+    - name: Generate alert rules
+      ansible.builtin.template:
+        src: "{{ alerts_directory_src }}/rules/{{ item }}.j2"
+        dest: "{{ alerts_directory_dest }}/rules/{{ item }}"
         mode: '0644'
+      with_items:
+        - spc-rules.yaml
+        - chainlets-rules.yaml
 
-    - name: Copy prometheus rules (alerts)
-      copy:
-        src: "{{ alerts_directory_src }}/rules"
-        dest: "{{ alerts_directory_dest }}"
+    - name: Debug alertmanager variable
+      ansible.builtin.debug:
+        var: alertmanager.opsgenie_api_key
+        verbosity: 0
+
+    - name: Debug host and variables
+      ansible.builtin.debug:
+        msg:
+          - "Host: {{ inventory_hostname }}"
+          - "Alertmanager config: {{ alertmanager | default('not defined') }}"
+
+    - name: Generate alertmanager config
+      ansible.builtin.template:
+        src: "{{ alerts_directory_src }}/alertmanager-config.yaml.j2"
+        dest: "{{ alerts_directory_dest }}/alertmanager-config.yaml"
         mode: '0644'

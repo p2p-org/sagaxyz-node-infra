@@ -5,9 +5,9 @@ metadata:
   name: {{ app.name }}-sa
   namespace: {{ app.namespace }}
   annotations:
-    eks.amazonaws.com/role-arn: "{{ chainlet_role_info.arn }}"
+    eks.amazonaws.com/role-arn: "{{ chainlet_role_info.iam_role.arn }}"
 ---
-apiVersion: apps/v1 
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ app.name }}
